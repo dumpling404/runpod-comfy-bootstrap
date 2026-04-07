@@ -8,9 +8,6 @@
 
 set -euo pipefail
 
-NSFW_IP_REPO_URL="${NSFW_IP_REPO_URL:-https://github.com/wulalaya/nsfw-ip.git}"
-NSFW_IP_REF="${NSFW_IP_REF:-prod}"
-REPO_DIR="${REPO_DIR:-/opt/nsfw-ip}"
 COMFY_ROOT="${COMFY_ROOT:-}"
 CUSTOM_NODES_DIR="${CUSTOM_NODES_DIR:-}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
@@ -81,22 +78,6 @@ bridge_volume_paths() {
   ln -s "$volume_nodes" "$workspace_nodes"
 }
 
-sync_repo() {
-  if [[ ! -d "$REPO_DIR/.git" ]]; then
-    echo "==> 首次 clone 仓库到 $REPO_DIR"
-    rm -rf "$REPO_DIR"
-    git clone "$NSFW_IP_REPO_URL" "$REPO_DIR"
-  fi
-
-  echo "==> 更新仓库：$NSFW_IP_REF"
-  git -C "$REPO_DIR" fetch --tags origin
-  git -C "$REPO_DIR" checkout "$NSFW_IP_REF"
-
-  if git -C "$REPO_DIR" rev-parse --verify "origin/$NSFW_IP_REF" >/dev/null 2>&1; then
-    git -C "$REPO_DIR" reset --hard "origin/$NSFW_IP_REF"
-  fi
-}
-
 ensure_impact_subpack() {
   local subpack_dir="$CUSTOM_NODES_DIR/ComfyUI-Impact-Subpack"
   if [[ -d "$subpack_dir/.git" ]]; then
@@ -110,10 +91,9 @@ ensure_impact_subpack() {
 }
 
 install_node_deps() {
-  local install_script="$REPO_DIR/scripts/install_custom_node_deps.sh"
-  if [[ ! -f "$install_script" ]]; then
-    install_script="$REPO_DIR/install_custom_node_deps.sh"
-  fi
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local install_script="$script_dir/install_custom_node_deps.sh"
   [[ -f "$install_script" ]] || die "找不到依赖脚本：$install_script"
 
   echo "==> 安装 custom node 依赖"
@@ -145,7 +125,6 @@ main() {
   ensure_python
   bridge_volume_paths
   [[ -d "$CUSTOM_NODES_DIR" ]] || die "custom_nodes 目录不存在：$CUSTOM_NODES_DIR"
-  sync_repo
   ensure_impact_subpack
   install_node_deps
 
@@ -159,8 +138,6 @@ main() {
 
   echo
   echo "完成："
-  echo "  仓库：$REPO_DIR"
-  echo "  Ref：$NSFW_IP_REF"
   echo "  ComfyUI：$COMFY_ROOT"
 }
 
