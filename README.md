@@ -57,3 +57,4 @@ RESTART_COMFYUI_AFTER_SYNC=0
 - `custom_nodes` on the volume do not make dependencies magically available.
 - Every new Pod / new image / new node update still needs a dependency install pass.
 - `ComfyUI-Impact-Subpack` is required for `UltralyticsDetectorProvider`.
+- In the official `runpod/comfyui` Pod shell, prefer `python3` when restarting ComfyUI manually.

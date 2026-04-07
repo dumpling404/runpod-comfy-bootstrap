@@ -77,7 +77,8 @@ install_node_deps() {
 
 restart_comfyui() {
   echo "==> 重启 ComfyUI"
-  pkill -f "python3 main.py" || true
+  pkill -f "python main.py --listen 0.0.0.0 --port 8188" || true
+  pkill -f "python3 main.py --listen 0.0.0.0 --port 8188" || true
   nohup "$PYTHON_BIN" "$COMFY_ROOT/main.py" --listen 0.0.0.0 --port 8188 > /workspace/comfyui.log 2>&1 &
 }
 
