@@ -57,6 +57,9 @@ ensure_impact_subpack() {
 
 install_node_deps() {
   local install_script="$REPO_DIR/scripts/install_custom_node_deps.sh"
+  if [[ ! -f "$install_script" ]]; then
+    install_script="$REPO_DIR/install_custom_node_deps.sh"
+  fi
   [[ -f "$install_script" ]] || die "找不到依赖脚本：$install_script"
 
   echo "==> 安装 custom node 依赖"
