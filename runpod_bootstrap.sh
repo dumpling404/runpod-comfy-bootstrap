@@ -16,6 +16,7 @@ CUSTOM_NODES_DIR="${CUSTOM_NODES_DIR:-$COMFY_ROOT/custom_nodes}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 RESTART_COMFYUI_AFTER_SYNC="${RESTART_COMFYUI_AFTER_SYNC:-0}"
 PIP_INSTALL_ARGS="${PIP_INSTALL_ARGS:-}"
+RUNPOD_VOLUME_ROOT="${RUNPOD_VOLUME_ROOT:-/runpod-volume}"
 
 die() {
   echo "错误：$1" >&2
@@ -25,7 +26,32 @@ die() {
 command -v git >/dev/null 2>&1 || die "缺少 git"
 command -v "$PYTHON_BIN" >/dev/null 2>&1 || die "缺少 Python：$PYTHON_BIN"
 [[ -d "$COMFY_ROOT" ]] || die "ComfyUI 目录不存在：$COMFY_ROOT"
-[[ -d "$CUSTOM_NODES_DIR" ]] || die "custom_nodes 目录不存在：$CUSTOM_NODES_DIR"
+
+bridge_volume_paths() {
+  local volume_comfy="$RUNPOD_VOLUME_ROOT/ComfyUI"
+  local workspace_models="$COMFY_ROOT/models"
+  local workspace_nodes="$COMFY_ROOT/custom_nodes"
+  local volume_models="$volume_comfy/models"
+  local volume_nodes="$volume_comfy/custom_nodes"
+
+  if [[ ! -d "$volume_comfy" ]]; then
+    echo "==> 未检测到 $volume_comfy，跳过路径桥接"
+    return
+  fi
+
+  echo "==> 检测到 RunPod volume，桥接 models/custom_nodes"
+  mkdir -p "$volume_models" "$volume_nodes"
+
+  if [[ -L "$workspace_models" || -d "$workspace_models" ]]; then
+    rm -rf "$workspace_models"
+  fi
+  ln -s "$volume_models" "$workspace_models"
+
+  if [[ -L "$workspace_nodes" || -d "$workspace_nodes" ]]; then
+    rm -rf "$workspace_nodes"
+  fi
+  ln -s "$volume_nodes" "$workspace_nodes"
+}
 
 sync_repo() {
   if [[ ! -d "$REPO_DIR/.git" ]]; then
@@ -83,6 +109,8 @@ restart_comfyui() {
 }
 
 main() {
+  bridge_volume_paths
+  [[ -d "$CUSTOM_NODES_DIR" ]] || die "custom_nodes 目录不存在：$CUSTOM_NODES_DIR"
   sync_repo
   ensure_impact_subpack
   install_node_deps
