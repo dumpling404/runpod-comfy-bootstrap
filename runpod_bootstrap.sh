@@ -11,12 +11,13 @@ set -euo pipefail
 NSFW_IP_REPO_URL="${NSFW_IP_REPO_URL:-https://github.com/wulalaya/nsfw-ip.git}"
 NSFW_IP_REF="${NSFW_IP_REF:-prod}"
 REPO_DIR="${REPO_DIR:-/opt/nsfw-ip}"
-COMFY_ROOT="${COMFY_ROOT:-/workspace/ComfyUI}"
-CUSTOM_NODES_DIR="${CUSTOM_NODES_DIR:-$COMFY_ROOT/custom_nodes}"
+COMFY_ROOT="${COMFY_ROOT:-}"
+CUSTOM_NODES_DIR="${CUSTOM_NODES_DIR:-}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 RESTART_COMFYUI_AFTER_SYNC="${RESTART_COMFYUI_AFTER_SYNC:-0}"
 PIP_INSTALL_ARGS="${PIP_INSTALL_ARGS:-}"
 RUNPOD_VOLUME_ROOT="${RUNPOD_VOLUME_ROOT:-/runpod-volume}"
+COMFY_VENV_ACTIVATE="${COMFY_VENV_ACTIVATE:-}"
 
 die() {
   echo "错误：$1" >&2
@@ -24,8 +25,35 @@ die() {
 }
 
 command -v git >/dev/null 2>&1 || die "缺少 git"
-command -v "$PYTHON_BIN" >/dev/null 2>&1 || die "缺少 Python：$PYTHON_BIN"
-[[ -d "$COMFY_ROOT" ]] || die "ComfyUI 目录不存在：$COMFY_ROOT"
+
+detect_comfy_root() {
+  if [[ -n "$COMFY_ROOT" ]]; then
+    [[ -d "$COMFY_ROOT" ]] || die "ComfyUI 目录不存在：$COMFY_ROOT"
+  elif [[ -d "/workspace/runpod-slim/ComfyUI" ]]; then
+    COMFY_ROOT="/workspace/runpod-slim/ComfyUI"
+  elif [[ -d "/workspace/ComfyUI" ]]; then
+    COMFY_ROOT="/workspace/ComfyUI"
+  else
+    die "找不到 ComfyUI 根目录"
+  fi
+
+  if [[ -z "$CUSTOM_NODES_DIR" ]]; then
+    CUSTOM_NODES_DIR="$COMFY_ROOT/custom_nodes"
+  fi
+
+  if [[ -z "$COMFY_VENV_ACTIVATE" && -f "$COMFY_ROOT/.venv-cu128/bin/activate" ]]; then
+    COMFY_VENV_ACTIVATE="$COMFY_ROOT/.venv-cu128/bin/activate"
+  fi
+}
+
+ensure_python() {
+  if [[ -n "$COMFY_VENV_ACTIVATE" ]]; then
+    # shellcheck disable=SC1090
+    source "$COMFY_VENV_ACTIVATE"
+  fi
+
+  command -v "$PYTHON_BIN" >/dev/null 2>&1 || die "缺少 Python：$PYTHON_BIN"
+}
 
 bridge_volume_paths() {
   local volume_comfy="$RUNPOD_VOLUME_ROOT/ComfyUI"
@@ -105,10 +133,16 @@ restart_comfyui() {
   echo "==> 重启 ComfyUI"
   pkill -f "python main.py --listen 0.0.0.0 --port 8188" || true
   pkill -f "python3 main.py --listen 0.0.0.0 --port 8188" || true
-  nohup "$PYTHON_BIN" "$COMFY_ROOT/main.py" --listen 0.0.0.0 --port 8188 > /workspace/comfyui.log 2>&1 &
+  if [[ -n "$COMFY_VENV_ACTIVATE" ]]; then
+    nohup bash -lc "cd '$COMFY_ROOT' && source '$COMFY_VENV_ACTIVATE' && $PYTHON_BIN main.py --listen 0.0.0.0 --port 8188" > /workspace/comfyui.log 2>&1 &
+  else
+    nohup "$PYTHON_BIN" "$COMFY_ROOT/main.py" --listen 0.0.0.0 --port 8188 > /workspace/comfyui.log 2>&1 &
+  fi
 }
 
 main() {
+  detect_comfy_root
+  ensure_python
   bridge_volume_paths
   [[ -d "$CUSTOM_NODES_DIR" ]] || die "custom_nodes 目录不存在：$CUSTOM_NODES_DIR"
   sync_repo
