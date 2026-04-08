@@ -3,9 +3,10 @@
 # 作用：
 # 1. 探测 ComfyUI 根目录
 # 2. 桥接 volume 中的 models/custom_nodes
-# 3. 安装 custom node 依赖
-# 4. 可选补装 Impact Subpack
-# 5. 可选重启 ComfyUI
+# 3. 同步默认 custom nodes
+# 4. 下载默认公开模型
+# 5. 安装 custom node 依赖与 Impact 配套依赖
+# 6. 可选重启 ComfyUI
 
 set -euo pipefail
 
@@ -17,10 +18,19 @@ PIP_INSTALL_ARGS="${PIP_INSTALL_ARGS:-}"
 RUNPOD_VOLUME_ROOT="${RUNPOD_VOLUME_ROOT:-/runpod-volume}"
 COMFY_VENV_ACTIVATE="${COMFY_VENV_ACTIVATE:-}"
 HF_TOKEN="${HF_TOKEN:-}"
+PRIVATE_LORA_REPO="${PRIVATE_LORA_REPO:-}"
+PRIVATE_LORA_REF="${PRIVATE_LORA_REF:-main}"
+PRIVATE_LORA_SUBDIR="${PRIVATE_LORA_SUBDIR:-loras}"
 MODEL_SPECS="${MODEL_SPECS:-}"
 MODEL_SPECS_FILE="${MODEL_SPECS_FILE:-}"
 MODEL_DOWNLOAD_BASE_URL="${MODEL_DOWNLOAD_BASE_URL:-https://huggingface.co}"
 SKIP_EXISTING_MODELS="${SKIP_EXISTING_MODELS:-1}"
+CUSTOM_NODE_SPECS="${CUSTOM_NODE_SPECS:-}"
+CUSTOM_NODE_SPECS_FILE="${CUSTOM_NODE_SPECS_FILE:-}"
+SKIP_EXISTING_CUSTOM_NODES="${SKIP_EXISTING_CUSTOM_NODES:-1}"
+BOOTSTRAP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEFAULT_MODEL_SPECS_FILE="${DEFAULT_MODEL_SPECS_FILE:-$BOOTSTRAP_DIR/manifests/model_specs.default.txt}"
+DEFAULT_CUSTOM_NODE_SPECS_FILE="${DEFAULT_CUSTOM_NODE_SPECS_FILE:-$BOOTSTRAP_DIR/manifests/custom_node_specs.default.txt}"
 
 die() {
   echo "错误：$1" >&2
@@ -56,6 +66,7 @@ ensure_python() {
   fi
 
   command -v "$PYTHON_BIN" >/dev/null 2>&1 || die "缺少 Python：$PYTHON_BIN"
+  PYTHON_BIN="$(command -v "$PYTHON_BIN")"
 }
 
 bridge_volume_paths() {
@@ -91,17 +102,97 @@ load_model_specs() {
   fi
 
   if [[ -n "$MODEL_SPECS" ]]; then
-    printf '%s
-' "$MODEL_SPECS"
+    printf '%s\n' "$MODEL_SPECS"
+    return
+  fi
+
+  if [[ -f "$DEFAULT_MODEL_SPECS_FILE" ]]; then
+    cat "$DEFAULT_MODEL_SPECS_FILE"
   fi
 }
 
-download_models_if_needed() {
+load_custom_node_specs() {
+  if [[ -n "$CUSTOM_NODE_SPECS_FILE" && -f "$CUSTOM_NODE_SPECS_FILE" ]]; then
+    cat "$CUSTOM_NODE_SPECS_FILE"
+    return
+  fi
+
+  if [[ -n "$CUSTOM_NODE_SPECS" ]]; then
+    printf '%s\n' "$CUSTOM_NODE_SPECS"
+    return
+  fi
+
+  if [[ -f "$DEFAULT_CUSTOM_NODE_SPECS_FILE" ]]; then
+    cat "$DEFAULT_CUSTOM_NODE_SPECS_FILE"
+  fi
+}
+
+append_private_lora_specs() {
+  [[ -n "$PRIVATE_LORA_REPO" ]] || return
+
+  printf '%s|%s|%s/%s|%s\n' \
+    'loras/xieyan_v1.safetensors' "$PRIVATE_LORA_REPO" "$PRIVATE_LORA_SUBDIR" 'xieyan_v1.safetensors' "$PRIVATE_LORA_REF"
+  printf '%s|%s|%s/%s|%s\n' \
+    'loras/oda-non_IL.safetensors' "$PRIVATE_LORA_REPO" "$PRIVATE_LORA_SUBDIR" 'oda-non_IL.safetensors' "$PRIVATE_LORA_REF"
+}
+
+sync_custom_nodes_if_needed() {
   local specs
-  specs="$(load_model_specs)"
+  specs="$(load_custom_node_specs)"
 
   if [[ -z "$specs" ]]; then
-    echo "==> 未配置 MODEL_SPECS / MODEL_SPECS_FILE，跳过 Hugging Face 模型下载"
+    echo "==> 未配置 CUSTOM_NODE_SPECS / CUSTOM_NODE_SPECS_FILE，跳过 custom_nodes 拉取"
+    return
+  fi
+
+  mkdir -p "$CUSTOM_NODES_DIR"
+  echo "==> 检查 custom_nodes 清单"
+
+  while IFS='|' read -r node_dir repo_url repo_ref; do
+    [[ -n "${node_dir// }" ]] || continue
+    [[ "$node_dir" =~ ^# ]] && continue
+    [[ -n "$repo_url" ]] || die "CUSTOM_NODE_SPECS 缺少 repo_url：$node_dir"
+
+    repo_ref="${repo_ref:-main}"
+    local dest="$CUSTOM_NODES_DIR/$node_dir"
+
+    if [[ -d "$dest/.git" ]]; then
+      echo "==> 更新 custom node：$node_dir@$repo_ref"
+      git -C "$dest" fetch --tags origin
+      git -C "$dest" checkout "$repo_ref"
+      if git -C "$dest" rev-parse --verify "origin/$repo_ref" >/dev/null 2>&1; then
+        git -C "$dest" reset --hard "origin/$repo_ref"
+      fi
+      continue
+    fi
+
+    if [[ -d "$dest" && "$SKIP_EXISTING_CUSTOM_NODES" == "1" ]]; then
+      echo "==> 已存在目录，跳过 custom node：$node_dir"
+      continue
+    fi
+
+    rm -rf "$dest"
+    echo "==> 拉取 custom node：$node_dir <- $repo_url@$repo_ref"
+    git clone "$repo_url" "$dest"
+    git -C "$dest" checkout "$repo_ref"
+    if git -C "$dest" rev-parse --verify "origin/$repo_ref" >/dev/null 2>&1; then
+      git -C "$dest" reset --hard "origin/$repo_ref"
+    fi
+  done <<< "$specs"
+}
+
+download_models_if_needed() {
+  local specs private_specs
+  specs="$(load_model_specs)"
+  private_specs="$(append_private_lora_specs || true)"
+
+  if [[ -n "$private_specs" ]]; then
+    specs="${specs:+$specs
+}$private_specs"
+  fi
+
+  if [[ -z "$specs" ]]; then
+    echo "==> 未配置 MODEL_SPECS / MODEL_SPECS_FILE，跳过模型下载"
     return
   fi
 
@@ -110,13 +201,12 @@ download_models_if_needed() {
   local models_dir="$COMFY_ROOT/models"
   mkdir -p "$models_dir"
 
-  echo "==> 检查 Hugging Face 模型清单"
+  echo "==> 检查模型清单"
 
   while IFS='|' read -r target_path repo_id repo_file revision; do
     [[ -n "${target_path// }" ]] || continue
     [[ "$target_path" =~ ^# ]] && continue
-    [[ -n "$repo_id" ]] || die "MODEL_SPECS 缺少 repo_id：$target_path"
-    [[ -n "$repo_file" ]] || die "MODEL_SPECS 缺少 repo_file：$target_path"
+    [[ -n "$repo_id" ]] || die "MODEL_SPECS 缺少 repo_id 或 direct_url：$target_path"
 
     revision="${revision:-main}"
 
@@ -129,14 +219,23 @@ download_models_if_needed() {
       continue
     fi
 
-    local url="$MODEL_DOWNLOAD_BASE_URL/$repo_id/resolve/$revision/$repo_file?download=1"
+    local url=""
+    local desc=""
     local -a curl_args=(--fail --location --retry 3 --output "$tmp_dest")
 
-    if [[ -n "$HF_TOKEN" ]]; then
-      curl_args+=(-H "Authorization: Bearer $HF_TOKEN")
+    if [[ "$repo_id" =~ ^https?:// ]]; then
+      url="$repo_id"
+      desc="$repo_id"
+    else
+      [[ -n "$repo_file" ]] || die "MODEL_SPECS 缺少 repo_file：$target_path"
+      url="$MODEL_DOWNLOAD_BASE_URL/$repo_id/resolve/$revision/$repo_file?download=1"
+      desc="$repo_id/$repo_file@$revision"
+      if [[ -n "$HF_TOKEN" ]]; then
+        curl_args+=(-H "Authorization: Bearer $HF_TOKEN")
+      fi
     fi
 
-    echo "==> 下载模型：$target_path <- $repo_id/$repo_file@$revision"
+    echo "==> 下载模型：$target_path <- $desc"
     rm -f "$tmp_dest"
     curl "${curl_args[@]}" "$url"
     mv "$tmp_dest" "$dest"
@@ -172,6 +271,11 @@ install_node_deps() {
     echo "==> 安装 Impact Subpack 依赖"
     "$PYTHON_BIN" -m pip install $PIP_INSTALL_ARGS -r "$CUSTOM_NODES_DIR/ComfyUI-Impact-Subpack/requirements.txt"
   fi
+
+  if [[ -d "$CUSTOM_NODES_DIR/ComfyUI-Impact-Pack" ]]; then
+    echo "==> 补装 Impact-Pack 运行依赖"
+    "$PYTHON_BIN" -m pip install $PIP_INSTALL_ARGS onnxruntime
+  fi
 }
 
 restart_comfyui() {
@@ -189,12 +293,13 @@ main() {
   detect_comfy_root
   ensure_python
   bridge_volume_paths
+  sync_custom_nodes_if_needed
   download_models_if_needed
   [[ -d "$CUSTOM_NODES_DIR" ]] || die "custom_nodes 目录不存在：$CUSTOM_NODES_DIR"
   ensure_impact_subpack
   install_node_deps
 
-  mkdir -p /workspace/archive/output /workspace/ComfyUI/input /workspace/ComfyUI/output
+  mkdir -p /workspace/archive/output "$COMFY_ROOT/input" "$COMFY_ROOT/output"
 
   if [[ "$RESTART_COMFYUI_AFTER_SYNC" == "1" ]]; then
     restart_comfyui
@@ -205,6 +310,7 @@ main() {
   echo
   echo "完成："
   echo "  ComfyUI：$COMFY_ROOT"
+  echo "  Python：$PYTHON_BIN"
 }
 
 main "$@"
