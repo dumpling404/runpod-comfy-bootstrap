@@ -1,5 +1,0 @@
-# <directory_name>|<git_repo_url>|<ref_optional>
-ComfyUI-Manager|https://github.com/ltdrdata/ComfyUI-Manager.git|main
-ComfyUI-Impact-Pack|https://github.com/ltdrdata/ComfyUI-Impact-Pack.git|Main
-ComfyUI-KJNodes|https://github.com/kijai/ComfyUI-KJNodes.git|main
-comfyui_controlnet_aux|https://github.com/Fannovel16/comfyui_controlnet_aux.git|main

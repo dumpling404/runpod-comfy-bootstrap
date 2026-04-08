@@ -1,6 +1,6 @@
 #!/bin/bash
-# Public RunPod profile.
-# Keep non-secret bootstrap defaults here so the pod can source one file and run.
+# Single config file for RunPod bootstrap.
+# Non-secret defaults live here.
 # Secret values like RUNPOD_SECRET_HG_TOKEN must still be injected from the Pod environment.
 
 export COMFY_ROOT="${COMFY_ROOT:-/workspace/runpod-slim/ComfyUI}"
@@ -21,12 +21,13 @@ EOF
 export CUSTOM_NODE_SPECS="${CUSTOM_NODE_SPECS:-$(cat <<'EOF'
 ComfyUI-Manager|https://github.com/ltdrdata/ComfyUI-Manager.git|main
 ComfyUI-Impact-Pack|https://github.com/ltdrdata/ComfyUI-Impact-Pack.git|Main
+ComfyUI-Impact-Subpack|https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git|main
 ComfyUI-KJNodes|https://github.com/kijai/ComfyUI-KJNodes.git|main
 comfyui_controlnet_aux|https://github.com/Fannovel16/comfyui_controlnet_aux.git|main
 EOF
 )}"
 
-# Optional private LoRA bundle.
+# Private LoRA bundle.
 # Leave RUNPOD_SECRET_HG_TOKEN out of git; inject it via Pod env if you want these to download.
 export PRIVATE_LORA_REPO="${PRIVATE_LORA_REPO:-dumpling404/mylora}"
 export PRIVATE_LORA_REF="${PRIVATE_LORA_REF:-main}"

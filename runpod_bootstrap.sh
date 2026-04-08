@@ -1,12 +1,13 @@
 #!/bin/bash
-# 官方 runpod/comfyui 镜像的二次初始化脚本
-# 作用：
-# 1. 探测 ComfyUI 根目录
-# 2. 桥接 volume 中的 models/custom_nodes
-# 3. 同步默认 custom nodes
-# 4. 下载默认公开模型
-# 5. 安装 custom node 依赖与 Impact 配套依赖
-# 6. 可选重启 ComfyUI
+# RunPod ComfyUI bootstrap.
+# Single execution script:
+# 1. source runpod_profile.sh
+# 2. detect ComfyUI root
+# 3. bridge volume paths when present
+# 4. sync all custom nodes from profile
+# 5. download all models from profile
+# 6. install Python dependencies for every custom node
+# 7. restart ComfyUI if enabled
 
 set -euo pipefail
 
@@ -22,15 +23,11 @@ PRIVATE_LORA_REF="${PRIVATE_LORA_REF:-main}"
 PRIVATE_LORA_SUBDIR="${PRIVATE_LORA_SUBDIR:-loras}"
 RUNPOD_SECRET_HG_TOKEN="${RUNPOD_SECRET_HG_TOKEN:-}"
 MODEL_SPECS="${MODEL_SPECS:-}"
-MODEL_SPECS_FILE="${MODEL_SPECS_FILE:-}"
 MODEL_DOWNLOAD_BASE_URL="${MODEL_DOWNLOAD_BASE_URL:-https://huggingface.co}"
 SKIP_EXISTING_MODELS="${SKIP_EXISTING_MODELS:-1}"
 CUSTOM_NODE_SPECS="${CUSTOM_NODE_SPECS:-}"
-CUSTOM_NODE_SPECS_FILE="${CUSTOM_NODE_SPECS_FILE:-}"
 SKIP_EXISTING_CUSTOM_NODES="${SKIP_EXISTING_CUSTOM_NODES:-1}"
 BOOTSTRAP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEFAULT_MODEL_SPECS_FILE="${DEFAULT_MODEL_SPECS_FILE:-$BOOTSTRAP_DIR/manifests/model_specs.default.txt}"
-DEFAULT_CUSTOM_NODE_SPECS_FILE="${DEFAULT_CUSTOM_NODE_SPECS_FILE:-$BOOTSTRAP_DIR/manifests/custom_node_specs.default.txt}"
 PROFILE_FILE="${PROFILE_FILE:-$BOOTSTRAP_DIR/runpod_profile.sh}"
 
 die() {
@@ -97,39 +94,22 @@ bridge_volume_paths() {
 }
 
 load_model_specs() {
-  if [[ -n "$MODEL_SPECS_FILE" && -f "$MODEL_SPECS_FILE" ]]; then
-    cat "$MODEL_SPECS_FILE"
-    return
-  fi
-
   if [[ -n "$MODEL_SPECS" ]]; then
     printf '%s\n' "$MODEL_SPECS"
     return
   fi
-
-  if [[ -f "$DEFAULT_MODEL_SPECS_FILE" ]]; then
-    cat "$DEFAULT_MODEL_SPECS_FILE"
-  fi
 }
 
 load_custom_node_specs() {
-  if [[ -n "$CUSTOM_NODE_SPECS_FILE" && -f "$CUSTOM_NODE_SPECS_FILE" ]]; then
-    cat "$CUSTOM_NODE_SPECS_FILE"
-    return
-  fi
-
   if [[ -n "$CUSTOM_NODE_SPECS" ]]; then
     printf '%s\n' "$CUSTOM_NODE_SPECS"
     return
-  fi
-
-  if [[ -f "$DEFAULT_CUSTOM_NODE_SPECS_FILE" ]]; then
-    cat "$DEFAULT_CUSTOM_NODE_SPECS_FILE"
   fi
 }
 
 append_private_lora_specs() {
   [[ -n "$PRIVATE_LORA_REPO" ]] || return
+  [[ -n "$RUNPOD_SECRET_HG_TOKEN" ]] || die "PRIVATE_LORA_REPO 已配置，但缺少 RUNPOD_SECRET_HG_TOKEN"
 
   printf '%s|%s|%s/%s|%s\n' \
     'loras/xieyan_v1.safetensors' "$PRIVATE_LORA_REPO" "$PRIVATE_LORA_SUBDIR" 'xieyan_v1.safetensors' "$PRIVATE_LORA_REF"
@@ -142,7 +122,7 @@ sync_custom_nodes_if_needed() {
   specs="$(load_custom_node_specs)"
 
   if [[ -z "$specs" ]]; then
-    echo "==> 未配置 CUSTOM_NODE_SPECS / CUSTOM_NODE_SPECS_FILE，跳过 custom_nodes 拉取"
+    echo "==> 未配置 CUSTOM_NODE_SPECS，跳过 custom_nodes 拉取"
     return
   fi
 
@@ -193,7 +173,7 @@ download_models_if_needed() {
   fi
 
   if [[ -z "$specs" ]]; then
-    echo "==> 未配置 MODEL_SPECS / MODEL_SPECS_FILE，跳过模型下载"
+    echo "==> 未配置 MODEL_SPECS，跳过模型下载"
     return
   fi
 
@@ -243,34 +223,31 @@ download_models_if_needed() {
   done <<< "$specs"
 }
 
-ensure_impact_subpack() {
-  local subpack_dir="$CUSTOM_NODES_DIR/ComfyUI-Impact-Subpack"
-  if [[ -d "$subpack_dir/.git" ]]; then
-    echo "==> 更新 ComfyUI-Impact-Subpack"
-    git -C "$subpack_dir" pull --ff-only || true
-    return
+install_node_deps() {
+  local req install_py
+
+  [[ -d "$CUSTOM_NODES_DIR" ]] || die "custom_nodes 目录不存在：$CUSTOM_NODES_DIR"
+
+  mapfile -d '' REQUIREMENT_FILES < <(find "$CUSTOM_NODES_DIR" -mindepth 2 -maxdepth 2 -name requirements.txt -print0 | sort -z)
+  if [[ ${#REQUIREMENT_FILES[@]} -eq 0 ]]; then
+    echo "==> 没有找到 requirements.txt"
+  else
+    echo "==> 安装 custom node requirements"
+    for req in "${REQUIREMENT_FILES[@]}"; do
+      echo "   - $(basename "$(dirname "$req")")"
+      "$PYTHON_BIN" -m pip install $PIP_INSTALL_ARGS -r "$req"
+    done
   fi
 
-  echo "==> 安装 ComfyUI-Impact-Subpack"
-  git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git "$subpack_dir"
-}
-
-install_node_deps() {
-  local script_dir
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  local install_script="$script_dir/install_custom_node_deps.sh"
-  [[ -f "$install_script" ]] || die "找不到依赖脚本：$install_script"
-
-  echo "==> 安装 custom node 依赖"
-  COMFY_ROOT="$COMFY_ROOT" \
-  CUSTOM_NODES_DIR="$CUSTOM_NODES_DIR" \
-  PYTHON_BIN="$PYTHON_BIN" \
-  PIP_INSTALL_ARGS="$PIP_INSTALL_ARGS" \
-  bash "$install_script"
-
-  if [[ -f "$CUSTOM_NODES_DIR/ComfyUI-Impact-Subpack/requirements.txt" ]]; then
-    echo "==> 安装 Impact Subpack 依赖"
-    "$PYTHON_BIN" -m pip install $PIP_INSTALL_ARGS -r "$CUSTOM_NODES_DIR/ComfyUI-Impact-Subpack/requirements.txt"
+  mapfile -d '' INSTALL_FILES < <(find "$CUSTOM_NODES_DIR" -mindepth 2 -maxdepth 2 -name install.py -print0 | sort -z)
+  if [[ ${#INSTALL_FILES[@]} -eq 0 ]]; then
+    echo "==> 没有找到 install.py"
+  else
+    echo "==> 执行 custom node install.py"
+    for install_py in "${INSTALL_FILES[@]}"; do
+      echo "   - $(basename "$(dirname "$install_py")")"
+      "$PYTHON_BIN" "$install_py"
+    done
   fi
 
   if [[ -d "$CUSTOM_NODES_DIR/ComfyUI-Impact-Pack" ]]; then
@@ -302,7 +279,6 @@ main() {
   sync_custom_nodes_if_needed
   download_models_if_needed
   [[ -d "$CUSTOM_NODES_DIR" ]] || die "custom_nodes 目录不存在：$CUSTOM_NODES_DIR"
-  ensure_impact_subpack
   install_node_deps
 
   mkdir -p /workspace/archive/output "$COMFY_ROOT/input" "$COMFY_ROOT/output"

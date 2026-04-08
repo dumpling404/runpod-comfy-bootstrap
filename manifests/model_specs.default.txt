@@ -1,7 +1,0 @@
-# HF format: target|repo_id|repo_file|revision
-# Direct URL format: target|direct_url
-checkpoints/waiIllustriousSDXL_v160.safetensors|highscoregames12018/checkpoint-collection-Main|waiIllustriousSDXL_v160.safetensors|main
-vae/sdxl_vae.safetensors|stabilityai/sdxl-vae|sdxl_vae.safetensors|main
-controlnet/controlnet_union_sdxl.safetensors|xinsir/controlnet-union-sdxl-1.0|diffusion_pytorch_model.safetensors|main
-ultralytics/bbox/face_yolov8m.pt|Bingsu/adetailer|face_yolov8m.pt|main
-# loras/oda-non_IL.safetensors|https://civitai.com/api/download/models/1227393?type=Model&format=SafeTensor
