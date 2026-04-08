@@ -1,10 +1,11 @@
 #!/bin/bash
 # 官方 runpod/comfyui 镜像的二次初始化脚本
 # 作用：
-# 1. git clone / fetch 你的仓库到容器内
-# 2. 安装 custom node 依赖
-# 3. 可选补装 Impact Subpack
-# 4. 可选重启 ComfyUI
+# 1. 探测 ComfyUI 根目录
+# 2. 桥接 volume 中的 models/custom_nodes
+# 3. 安装 custom node 依赖
+# 4. 可选补装 Impact Subpack
+# 5. 可选重启 ComfyUI
 
 set -euo pipefail
 
@@ -15,6 +16,11 @@ RESTART_COMFYUI_AFTER_SYNC="${RESTART_COMFYUI_AFTER_SYNC:-0}"
 PIP_INSTALL_ARGS="${PIP_INSTALL_ARGS:-}"
 RUNPOD_VOLUME_ROOT="${RUNPOD_VOLUME_ROOT:-/runpod-volume}"
 COMFY_VENV_ACTIVATE="${COMFY_VENV_ACTIVATE:-}"
+HF_TOKEN="${HF_TOKEN:-}"
+MODEL_SPECS="${MODEL_SPECS:-}"
+MODEL_SPECS_FILE="${MODEL_SPECS_FILE:-}"
+MODEL_DOWNLOAD_BASE_URL="${MODEL_DOWNLOAD_BASE_URL:-https://huggingface.co}"
+SKIP_EXISTING_MODELS="${SKIP_EXISTING_MODELS:-1}"
 
 die() {
   echo "错误：$1" >&2
@@ -78,6 +84,65 @@ bridge_volume_paths() {
   ln -s "$volume_nodes" "$workspace_nodes"
 }
 
+load_model_specs() {
+  if [[ -n "$MODEL_SPECS_FILE" && -f "$MODEL_SPECS_FILE" ]]; then
+    cat "$MODEL_SPECS_FILE"
+    return
+  fi
+
+  if [[ -n "$MODEL_SPECS" ]]; then
+    printf '%s
+' "$MODEL_SPECS"
+  fi
+}
+
+download_models_if_needed() {
+  local specs
+  specs="$(load_model_specs)"
+
+  if [[ -z "$specs" ]]; then
+    echo "==> 未配置 MODEL_SPECS / MODEL_SPECS_FILE，跳过 Hugging Face 模型下载"
+    return
+  fi
+
+  command -v curl >/dev/null 2>&1 || die "缺少 curl"
+
+  local models_dir="$COMFY_ROOT/models"
+  mkdir -p "$models_dir"
+
+  echo "==> 检查 Hugging Face 模型清单"
+
+  while IFS='|' read -r target_path repo_id repo_file revision; do
+    [[ -n "${target_path// }" ]] || continue
+    [[ "$target_path" =~ ^# ]] && continue
+    [[ -n "$repo_id" ]] || die "MODEL_SPECS 缺少 repo_id：$target_path"
+    [[ -n "$repo_file" ]] || die "MODEL_SPECS 缺少 repo_file：$target_path"
+
+    revision="${revision:-main}"
+
+    local dest="$models_dir/$target_path"
+    local tmp_dest="$dest.tmp"
+    mkdir -p "$(dirname "$dest")"
+
+    if [[ "$SKIP_EXISTING_MODELS" == "1" && -f "$dest" ]]; then
+      echo "==> 已存在，跳过模型：$target_path"
+      continue
+    fi
+
+    local url="$MODEL_DOWNLOAD_BASE_URL/$repo_id/resolve/$revision/$repo_file?download=1"
+    local -a curl_args=(--fail --location --retry 3 --output "$tmp_dest")
+
+    if [[ -n "$HF_TOKEN" ]]; then
+      curl_args+=(-H "Authorization: Bearer $HF_TOKEN")
+    fi
+
+    echo "==> 下载模型：$target_path <- $repo_id/$repo_file@$revision"
+    rm -f "$tmp_dest"
+    curl "${curl_args[@]}" "$url"
+    mv "$tmp_dest" "$dest"
+  done <<< "$specs"
+}
+
 ensure_impact_subpack() {
   local subpack_dir="$CUSTOM_NODES_DIR/ComfyUI-Impact-Subpack"
   if [[ -d "$subpack_dir/.git" ]]; then
@@ -124,6 +189,7 @@ main() {
   detect_comfy_root
   ensure_python
   bridge_volume_paths
+  download_models_if_needed
   [[ -d "$CUSTOM_NODES_DIR" ]] || die "custom_nodes 目录不存在：$CUSTOM_NODES_DIR"
   ensure_impact_subpack
   install_node_deps

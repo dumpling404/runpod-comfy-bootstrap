@@ -5,6 +5,7 @@ Bootstrap scripts for running official `runpod/comfyui` Pods with persistent `mo
 ## What this repo does
 
 - sync your bootstrap repo into the Pod
+- optionally download models from Hugging Face into the mounted volume
 - install Python dependencies for existing `custom_nodes`
 - install `ComfyUI-Impact-Subpack` if needed
 - optionally restart ComfyUI after setup
@@ -21,7 +22,13 @@ Bootstrap scripts for running official `runpod/comfyui` Pods with persistent `mo
 1. Start an official `runpod/comfyui` Pod.
 2. Mount a persistent volume so `models/` and `custom_nodes/` survive Pod recreation.
 3. Copy or clone this repo into the Pod.
-4. Run:
+4. Use this as RunPod Startup Command:
+
+```bash
+cd /workspace/runpod-comfy-bootstrap && bash bootstrap_entry.sh
+```
+
+5. Or run manually:
 
 ```bash
 bash runpod_bootstrap.sh
@@ -35,22 +42,33 @@ RESTART_COMFYUI_AFTER_SYNC=1 bash runpod_bootstrap.sh
 
 ## Important assumptions
 
-- `models/` and `custom_nodes/` are already on the mounted volume.
+- `custom_nodes/` should already be on the mounted volume.
+- `models/` can already be on the mounted volume, or be downloaded from Hugging Face during bootstrap.
 - This repo is for Pod/bootstrap orchestration, not business workflows.
 - Output browsing should usually stay local; the volume is mainly for heavy persistent assets.
 
 ## Main environment variables
 
 ```bash
-NSFW_IP_REPO_URL=https://github.com/dumpling404/nsfw-ip.git
-NSFW_IP_REF=prod
-REPO_DIR=/opt/nsfw-ip
+BOOTSTRAP_REPO_URL=https://github.com/dumpling404/runpod-comfy-bootstrap.git
+BOOTSTRAP_REPO_REF=main
+BOOTSTRAP_REPO_DIR=/workspace/runpod-comfy-bootstrap
 COMFY_ROOT=/workspace/ComfyUI
 CUSTOM_NODES_DIR=/workspace/ComfyUI/custom_nodes
 PYTHON_BIN=python3
 PIP_INSTALL_ARGS=
 RESTART_COMFYUI_AFTER_SYNC=0
+HF_TOKEN=hf_xxx_for_private_or_gated_repos
+MODEL_SPECS_FILE=/workspace/model_specs.txt
+MODEL_DOWNLOAD_BASE_URL=https://huggingface.co
+SKIP_EXISTING_MODELS=1
 ```
+
+## Public / private boundary
+
+- This repo is public bootstrap only.
+- Do not put private business repo paths into the RunPod Startup Command.
+- Private prompt / workflow / story repos should stay separate from this bootstrap layer.
 
 ## Notes
 
@@ -58,3 +76,31 @@ RESTART_COMFYUI_AFTER_SYNC=0
 - Every new Pod / new image / new node update still needs a dependency install pass.
 - `ComfyUI-Impact-Subpack` is required for `UltralyticsDetectorProvider`.
 - In the official `runpod/comfyui` Pod shell, prefer `python3` when restarting ComfyUI manually.
+
+## Hugging Face model download
+
+For a fresh account / empty volume, you can let bootstrap pull models directly from Hugging Face instead of copying them with `scp`.
+
+Use either:
+
+- `MODEL_SPECS_FILE` -> path to a manifest file inside the Pod
+- `MODEL_SPECS` -> inline multi-line manifest
+
+Manifest format: one model per line
+
+```text
+<target_path_under_models>|<repo_id>|<repo_file>|<revision_optional>
+```
+
+Example:
+
+```text
+checkpoints/waiIllustriousSDXL_v160.safetensors|your-org/your-model-repo|waiIllustriousSDXL_v160.safetensors|main
+loras/xieyan_v1.safetensors|your-org/your-model-repo|xieyan_v1.safetensors|main
+```
+
+Notes:
+
+- `target_path_under_models` is relative to `ComfyUI/models/`
+- private or gated repos need `HF_TOKEN`
+- existing files are skipped when `SKIP_EXISTING_MODELS=1`
