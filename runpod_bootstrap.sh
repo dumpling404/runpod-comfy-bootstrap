@@ -17,10 +17,10 @@ RESTART_COMFYUI_AFTER_SYNC="${RESTART_COMFYUI_AFTER_SYNC:-0}"
 PIP_INSTALL_ARGS="${PIP_INSTALL_ARGS:-}"
 RUNPOD_VOLUME_ROOT="${RUNPOD_VOLUME_ROOT:-/runpod-volume}"
 COMFY_VENV_ACTIVATE="${COMFY_VENV_ACTIVATE:-}"
-HF_TOKEN="${HF_TOKEN:-}"
 PRIVATE_LORA_REPO="${PRIVATE_LORA_REPO:-}"
 PRIVATE_LORA_REF="${PRIVATE_LORA_REF:-main}"
 PRIVATE_LORA_SUBDIR="${PRIVATE_LORA_SUBDIR:-loras}"
+RUNPOD_SECRET_HG_TOKEN="${RUNPOD_SECRET_HG_TOKEN:-}"
 MODEL_SPECS="${MODEL_SPECS:-}"
 MODEL_SPECS_FILE="${MODEL_SPECS_FILE:-}"
 MODEL_DOWNLOAD_BASE_URL="${MODEL_DOWNLOAD_BASE_URL:-https://huggingface.co}"
@@ -231,8 +231,8 @@ download_models_if_needed() {
       [[ -n "$repo_file" ]] || die "MODEL_SPECS 缺少 repo_file：$target_path"
       url="$MODEL_DOWNLOAD_BASE_URL/$repo_id/resolve/$revision/$repo_file?download=1"
       desc="$repo_id/$repo_file@$revision"
-      if [[ -n "$HF_TOKEN" ]]; then
-        curl_args+=(-H "Authorization: Bearer $HF_TOKEN")
+      if [[ -n "$RUNPOD_SECRET_HG_TOKEN" ]]; then
+        curl_args+=(-H "Authorization: Bearer $RUNPOD_SECRET_HG_TOKEN")
       fi
     fi
 

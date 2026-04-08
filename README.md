@@ -56,7 +56,7 @@ CUSTOM_NODES_DIR=/workspace/ComfyUI/custom_nodes
 PYTHON_BIN=python3
 PIP_INSTALL_ARGS=
 RESTART_COMFYUI_AFTER_SYNC=0
-HF_TOKEN=hf_xxx_for_private_or_gated_repos
+RUNPOD_SECRET_HG_TOKEN=hf_xxx_for_private_or_gated_repos
 PRIVATE_LORA_REPO=dumpling404/mylora
 PRIVATE_LORA_REF=main
 PRIVATE_LORA_SUBDIR=loras
@@ -88,8 +88,8 @@ checkpoints/waiIllustriousSDXL_v160.safetensors|highscoregames12018/checkpoint-c
 Notes:
 
 - `target_path_under_models` is relative to `ComfyUI/models/`
-- private or gated HF repos need `HF_TOKEN`
-- direct URLs bypass `HF_TOKEN`
+- private or gated HF repos need `RUNPOD_SECRET_HG_TOKEN`
+- direct URLs bypass `RUNPOD_SECRET_HG_TOKEN`
 - some sources such as Civitai may still require their own auth and should stay in a private override manifest
 - existing files are skipped when `SKIP_EXISTING_MODELS=1`
 
@@ -128,7 +128,7 @@ Private or unstable assets should not be hard-coded into the public defaults.
 If you keep your own LoRAs in a private Hugging Face repo, set these Pod env vars:
 
 ```bash
-HF_TOKEN=...
+RUNPOD_SECRET_HG_TOKEN=...
 PRIVATE_LORA_REPO=dumpling404/mylora
 PRIVATE_LORA_REF=main
 PRIVATE_LORA_SUBDIR=loras
@@ -139,7 +139,7 @@ Then bootstrap will additionally pull:
 - `loras/xieyan_v1.safetensors`
 - `loras/oda-non_IL.safetensors`
 
-from that private repo using `HF_TOKEN`.
+from that private repo using `RUNPOD_SECRET_HG_TOKEN`.
 
 ## Public / private boundary
 

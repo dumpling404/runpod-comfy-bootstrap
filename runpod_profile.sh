@@ -1,7 +1,7 @@
 #!/bin/bash
 # Public RunPod profile.
 # Keep non-secret bootstrap defaults here so the pod can source one file and run.
-# Secret values like HF_TOKEN must still be injected from the Pod environment.
+# Secret values like RUNPOD_SECRET_HG_TOKEN must still be injected from the Pod environment.
 
 export COMFY_ROOT="${COMFY_ROOT:-/workspace/runpod-slim/ComfyUI}"
 export CUSTOM_NODES_DIR="${CUSTOM_NODES_DIR:-$COMFY_ROOT/custom_nodes}"
@@ -27,8 +27,7 @@ EOF
 )}"
 
 # Optional private LoRA bundle.
-# Leave HF_TOKEN out of git; inject it via Pod env if you want these to download.
+# Leave RUNPOD_SECRET_HG_TOKEN out of git; inject it via Pod env if you want these to download.
 export PRIVATE_LORA_REPO="${PRIVATE_LORA_REPO:-dumpling404/mylora}"
 export PRIVATE_LORA_REF="${PRIVATE_LORA_REF:-main}"
 export PRIVATE_LORA_SUBDIR="${PRIVATE_LORA_SUBDIR:-loras}"
-
