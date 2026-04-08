@@ -31,6 +31,7 @@ SKIP_EXISTING_CUSTOM_NODES="${SKIP_EXISTING_CUSTOM_NODES:-1}"
 BOOTSTRAP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_MODEL_SPECS_FILE="${DEFAULT_MODEL_SPECS_FILE:-$BOOTSTRAP_DIR/manifests/model_specs.default.txt}"
 DEFAULT_CUSTOM_NODE_SPECS_FILE="${DEFAULT_CUSTOM_NODE_SPECS_FILE:-$BOOTSTRAP_DIR/manifests/custom_node_specs.default.txt}"
+PROFILE_FILE="${PROFILE_FILE:-$BOOTSTRAP_DIR/runpod_profile.sh}"
 
 die() {
   echo "错误：$1" >&2
@@ -290,6 +291,11 @@ restart_comfyui() {
 }
 
 main() {
+  if [[ -f "$PROFILE_FILE" ]]; then
+    echo "==> source profile: $PROFILE_FILE"
+    # shellcheck disable=SC1090
+    source "$PROFILE_FILE"
+  fi
   detect_comfy_root
   ensure_python
   bridge_volume_paths

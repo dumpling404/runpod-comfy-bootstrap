@@ -9,6 +9,7 @@ set -euo pipefail
 BOOTSTRAP_REPO_URL="${BOOTSTRAP_REPO_URL:-https://github.com/dumpling404/runpod-comfy-bootstrap.git}"
 BOOTSTRAP_REPO_REF="${BOOTSTRAP_REPO_REF:-main}"
 BOOTSTRAP_REPO_DIR="${BOOTSTRAP_REPO_DIR:-/workspace/runpod-comfy-bootstrap}"
+PROFILE_FILE="${PROFILE_FILE:-$BOOTSTRAP_REPO_DIR/runpod_profile.sh}"
 
 die() {
   echo "错误：$1" >&2
@@ -35,6 +36,11 @@ sync_bootstrap_repo() {
 
 main() {
   sync_bootstrap_repo
+  if [[ -f "$PROFILE_FILE" ]]; then
+    echo "==> source profile: $PROFILE_FILE"
+    # shellcheck disable=SC1090
+    source "$PROFILE_FILE"
+  fi
 
   [[ -f "$BOOTSTRAP_REPO_DIR/runpod_bootstrap.sh" ]] || die "找不到 runpod_bootstrap.sh"
 

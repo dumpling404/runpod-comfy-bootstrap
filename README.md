@@ -18,6 +18,8 @@ Bootstrap scripts for running official `runpod/comfyui` Pods with reusable `mode
   Thin entrypoint that updates this repo and delegates to `runpod_bootstrap.sh`.
 - `runpod_bootstrap.sh`
   Main Pod bootstrap script.
+- `runpod_profile.sh`
+  Git-tracked profile with the default model and custom node manifests.
 - `install_custom_node_deps.sh`
   Scans `custom_nodes/*/requirements.txt` and installs dependencies.
 - `manifests/model_specs.default.txt`
@@ -48,6 +50,7 @@ RESTART_COMFYUI_AFTER_SYNC=1 bash /workspace/runpod-comfy-bootstrap/runpod_boots
 BOOTSTRAP_REPO_URL=https://github.com/dumpling404/runpod-comfy-bootstrap.git
 BOOTSTRAP_REPO_REF=main
 BOOTSTRAP_REPO_DIR=/workspace/runpod-comfy-bootstrap
+PROFILE_FILE=/workspace/runpod-comfy-bootstrap/runpod_profile.sh
 COMFY_ROOT=/workspace/ComfyUI
 CUSTOM_NODES_DIR=/workspace/ComfyUI/custom_nodes
 PYTHON_BIN=python3
