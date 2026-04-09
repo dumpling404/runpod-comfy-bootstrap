@@ -18,6 +18,7 @@ RESTART_COMFYUI_AFTER_SYNC="${RESTART_COMFYUI_AFTER_SYNC:-0}"
 PIP_INSTALL_ARGS="${PIP_INSTALL_ARGS:-}"
 RUNPOD_VOLUME_ROOT="${RUNPOD_VOLUME_ROOT:-/runpod-volume}"
 COMFY_VENV_ACTIVATE="${COMFY_VENV_ACTIVATE:-}"
+QWEN_NODES_PATCH_URL="${QWEN_NODES_PATCH_URL:-}"
 PRIVATE_LORA_REPO="${PRIVATE_LORA_REPO:-}"
 PRIVATE_LORA_REF="${PRIVATE_LORA_REF:-main}"
 PRIVATE_LORA_SUBDIR="${PRIVATE_LORA_SUBDIR:-loras}"
@@ -223,6 +224,24 @@ download_models_if_needed() {
   done <<< "$specs"
 }
 
+apply_qwen_nodes_patch() {
+  [[ -n "$QWEN_NODES_PATCH_URL" ]] || return
+  command -v curl >/dev/null 2>&1 || die "缺少 curl"
+
+  local target="$COMFY_ROOT/comfy_extras/nodes_qwen.py"
+  local tmp_target="$target.tmp"
+
+  echo "==> 应用 Qwen nodes 补丁"
+  rm -f "$tmp_target"
+  curl --fail --location --retry 3 --output "$tmp_target" "$QWEN_NODES_PATCH_URL"
+  "$PYTHON_BIN" - <<'PATCHCHECK' "$tmp_target"
+import ast
+import sys
+ast.parse(open(sys.argv[1], 'r', encoding='utf-8').read())
+PATCHCHECK
+  mv "$tmp_target" "$target"
+}
+
 install_node_deps() {
   local req install_py
 
@@ -280,6 +299,7 @@ main() {
   download_models_if_needed
   [[ -d "$CUSTOM_NODES_DIR" ]] || die "custom_nodes 目录不存在：$CUSTOM_NODES_DIR"
   install_node_deps
+  apply_qwen_nodes_patch
 
   mkdir -p /workspace/archive/output "$COMFY_ROOT/input" "$COMFY_ROOT/output"
 
