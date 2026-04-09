@@ -6,8 +6,21 @@
   唯一配置清单。把要装的 custom nodes、models、私有 LoRA 源都写这里。
 - `runpod_bootstrap.sh`
   唯一执行脚本。读取 `runpod_profile.sh`，然后一次性把节点、依赖、模型、LoRA、ComfyUI 都处理完。
+- `full_bootstrap.sh`
+  给全新 Pod 用的傻瓜式全量安装入口。默认不跳过任何模型和 custom node。
 
 `bootstrap_entry.sh` 只是 RunPod Startup Command 的薄入口，用来先更新仓库再执行 `runpod_bootstrap.sh`。
+
+## 新 Pod 最简命令
+
+如果 `RUNPOD_SECRET_HG_TOKEN` 已经通过 Pod 环境变量注入，新 Pod 默认直接用：
+
+```bash
+git clone https://github.com/dumpling404/runpod-comfy-bootstrap.git /workspace/runpod-comfy-bootstrap && cd /workspace/runpod-comfy-bootstrap && bash full_bootstrap.sh
+```
+
+不要每次在命令里重复手写 `RUNPOD_SECRET_HG_TOKEN=...`。
+只有 Pod 环境里根本没注入 token 时，才另外补。
 
 ## 当前行为
 
@@ -21,6 +34,7 @@
 6. 执行每个 custom node 的 `install.py`
 7. 补装 `onnxruntime`
 8. 按配置重启 ComfyUI
+9. 打印 checkpoint / LoRA 资产摘要
 
 ## 启动方式
 
@@ -34,6 +48,12 @@ cd /workspace/runpod-comfy-bootstrap && bash bootstrap_entry.sh
 
 ```bash
 bash /workspace/runpod-comfy-bootstrap/runpod_bootstrap.sh
+```
+
+新 Pod 全量安装：
+
+```bash
+bash /workspace/runpod-comfy-bootstrap/full_bootstrap.sh
 ```
 
 云端单独补齐 edit 模型链：
@@ -95,3 +115,5 @@ RUNPOD_SECRET_HG_TOKEN=...
 
 - 这个仓库只负责 Pod 环境恢复
 - 私有 prompt / workflow / story 不进这个仓库
+- 新 Pod 默认优先用 `full_bootstrap.sh`
+- `runpod_bootstrap.sh` 更适合已有 Pod 的自愈 / 增量修补

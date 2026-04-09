@@ -286,6 +286,28 @@ restart_comfyui() {
   fi
 }
 
+print_asset_summary() {
+  local checkpoints_dir="$COMFY_ROOT/models/checkpoints"
+  local loras_dir="$COMFY_ROOT/models/loras"
+
+  echo
+  echo "==> 资产摘要"
+
+  if [[ -d "$checkpoints_dir" ]]; then
+    echo "  checkpoints:"
+    find "$checkpoints_dir" -maxdepth 1 -type f | sort | sed 's#^#    - #'
+  else
+    echo "  checkpoints: <missing>"
+  fi
+
+  if [[ -d "$loras_dir" ]]; then
+    echo "  loras:"
+    find "$loras_dir" -maxdepth 1 -type f | sort | sed 's#^#    - #'
+  else
+    echo "  loras: <missing>"
+  fi
+}
+
 main() {
   if [[ -f "$PROFILE_FILE" ]]; then
     echo "==> source profile: $PROFILE_FILE"
@@ -308,6 +330,8 @@ main() {
   else
     echo "==> 跳过重启 ComfyUI（RESTART_COMFYUI_AFTER_SYNC=$RESTART_COMFYUI_AFTER_SYNC）"
   fi
+
+  print_asset_summary
 
   echo
   echo "完成："
