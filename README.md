@@ -36,6 +36,12 @@ cd /workspace/runpod-comfy-bootstrap && bash bootstrap_entry.sh
 bash /workspace/runpod-comfy-bootstrap/runpod_bootstrap.sh
 ```
 
+云端单独补齐 edit 模型链：
+
+```bash
+bash /workspace/runpod-comfy-bootstrap/install_edit_models.sh
+```
+
 ## 关键环境变量
 
 ```bash
