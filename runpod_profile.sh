@@ -26,7 +26,6 @@ ComfyUI-Impact-Pack|https://github.com/ltdrdata/ComfyUI-Impact-Pack.git|Main
 ComfyUI-Impact-Subpack|https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git|main
 ComfyUI-KJNodes|https://github.com/kijai/ComfyUI-KJNodes.git|main
 comfyui_controlnet_aux|https://github.com/Fannovel16/comfyui_controlnet_aux.git|main
-ComfyUI_Qwen_Image|https://github.com/1038lab/ComfyUI-Qwen-Image.git|main
 EOF
 )}"
 
