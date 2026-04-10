@@ -104,6 +104,7 @@ SKIP_EXISTING_CUSTOM_NODES=1
 
 - `loras/xieyan_v1.safetensors`
 - `loras/oda-non_IL.safetensors`
+- `loras/realism_lora_by_stable_yogi_v3_lite.safetensors`
 
 这时必须提供：
 
@@ -115,5 +116,6 @@ RUNPOD_SECRET_HG_TOKEN=...
 
 - 这个仓库只负责 Pod 环境恢复
 - 私有 prompt / workflow / story 不进这个仓库
+- 当前默认按统一 `aio` 主生产链维护常用模型、节点和私有 LoRA，不为每个项目拆独立 bootstrap
 - 新 Pod 默认优先用 `full_bootstrap.sh`
 - `runpod_bootstrap.sh` 更适合已有 Pod 的自愈 / 增量修补
