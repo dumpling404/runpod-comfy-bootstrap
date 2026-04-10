@@ -105,6 +105,7 @@ SKIP_EXISTING_CUSTOM_NODES=1
 - `loras/xieyan_v1.safetensors`
 - `loras/oda-non_IL.safetensors`
 - `loras/realism_lora_by_stable_yogi_v3_lite.safetensors`
+- `loras/urban_womens_style.safetensors`
 
 这时必须提供：
 

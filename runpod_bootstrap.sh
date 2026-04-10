@@ -118,6 +118,8 @@ append_private_lora_specs() {
     'loras/oda-non_IL.safetensors' "$PRIVATE_LORA_REPO" "$PRIVATE_LORA_SUBDIR" 'oda-non_IL.safetensors' "$PRIVATE_LORA_REF"
   printf '%s|%s|%s/%s|%s\n' \
     'loras/realism_lora_by_stable_yogi_v3_lite.safetensors' "$PRIVATE_LORA_REPO" "$PRIVATE_LORA_SUBDIR" 'realism_lora_by_stable_yogi_v3_lite.safetensors' "$PRIVATE_LORA_REF"
+  printf '%s|%s|%s/%s|%s\n' \
+    'loras/urban_womens_style.safetensors' "$PRIVATE_LORA_REPO" "$PRIVATE_LORA_SUBDIR" 'urban_womens_style.safetensors' "$PRIVATE_LORA_REF"
 }
 
 sync_custom_nodes_if_needed() {
