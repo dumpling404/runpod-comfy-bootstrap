@@ -92,6 +92,10 @@ SKIP_EXISTING_CUSTOM_NODES=1
 <target_path_under_models>|<direct_url>
 ```
 
+当前默认模型清单同时包含一个 Civitai 直链示例：
+
+- `checkpoints/PaSanctuary_v4.0.safetensors|https://civitai.com/api/download/models/1123094`
+
 `CUSTOM_NODE_SPECS`:
 
 ```text

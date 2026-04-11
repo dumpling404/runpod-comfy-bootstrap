@@ -12,6 +12,7 @@ export RUNPOD_VOLUME_ROOT="${RUNPOD_VOLUME_ROOT:-/runpod-volume}"
 export QWEN_NODES_PATCH_URL="${QWEN_NODES_PATCH_URL:-https://huggingface.co/Phr00t/Qwen-Image-Edit-Rapid-AIO/resolve/main/fixed-textencode-node/nodes_qwen.v2.py}"
 
 export MODEL_SPECS="${MODEL_SPECS:-$(cat <<'EOF'
+checkpoints/PaSanctuary_v4.0.safetensors|https://civitai.com/api/download/models/1123094
 checkpoints/waiIllustriousSDXL_v160.safetensors|highscoregames12018/checkpoint-collection-Main|waiIllustriousSDXL_v160.safetensors|main
 checkpoints/Qwen-Rapid-AIO-NSFW-v23.safetensors|Phr00t/Qwen-Image-Edit-Rapid-AIO|v23/Qwen-Rapid-AIO-NSFW-v23.safetensors|main
 vae/sdxl_vae.safetensors|stabilityai/sdxl-vae|sdxl_vae.safetensors|main
