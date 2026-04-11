@@ -15,8 +15,7 @@ ENV BOOTSTRAP_REPO_DIR="/workspace/runpod-comfy-bootstrap"
 ENV NSFW_IP_REPO_URL=""
 ENV NSFW_IP_REF="prod"
 ENV RESTART_COMFYUI_AFTER_SYNC="1"
-ENV COMFY_ROOT="/workspace/ComfyUI"
-ENV CUSTOM_NODES_DIR="/workspace/ComfyUI/custom_nodes"
+# COMFY_ROOT 和 CUSTOM_NODES_DIR 由 runpod_profile.sh 控制，不在此设置默认值。
 ENV PYTHON_BIN="python3"
 ENV PIP_INSTALL_ARGS=""
 

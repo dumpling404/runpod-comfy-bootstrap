@@ -11,6 +11,8 @@ set -euo pipefail
 COMFY_ROOT="${COMFY_ROOT:-/workspace/runpod-slim/ComfyUI}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 QWEN_NODES_PATCH_URL="${QWEN_NODES_PATCH_URL:-https://huggingface.co/Phr00t/Qwen-Image-Edit-Rapid-AIO/resolve/main/fixed-textencode-node/nodes_qwen.v2.py}"
+# Qwen 模型版本号。更新时同步修改 runpod_profile.sh 的 MODEL_SPECS。
+QWEN_RAPID_AIO_VERSION="${QWEN_RAPID_AIO_VERSION:-v23}"
 
 beep() {
   paplay /usr/share/sounds/freedesktop/stereo/complete.oga 2>/dev/null || echo -e '\a\a\a'
@@ -49,10 +51,10 @@ main() {
   [[ -d "$COMFY_ROOT" ]] || die "ComfyUI 目录不存在：$COMFY_ROOT"
   mkdir -p "$COMFY_ROOT/models/checkpoints"
 
-  echo "==> 下载 Qwen Rapid-AIO NSFW"
+  echo "==> 下载 Qwen Rapid-AIO NSFW ($QWEN_RAPID_AIO_VERSION)"
   download_file \
-    "https://huggingface.co/Phr00t/Qwen-Image-Edit-Rapid-AIO/resolve/main/v23/Qwen-Rapid-AIO-NSFW-v23.safetensors?download=1" \
-    "$COMFY_ROOT/models/checkpoints/Qwen-Rapid-AIO-NSFW-v23.safetensors"
+    "https://huggingface.co/Phr00t/Qwen-Image-Edit-Rapid-AIO/resolve/main/$QWEN_RAPID_AIO_VERSION/Qwen-Rapid-AIO-NSFW-$QWEN_RAPID_AIO_VERSION.safetensors?download=1" \
+    "$COMFY_ROOT/models/checkpoints/Qwen-Rapid-AIO-NSFW-$QWEN_RAPID_AIO_VERSION.safetensors"
 
   echo "==> 应用 nodes_qwen v2 补丁"
   curl --fail --location --retry 3 --output "$COMFY_ROOT/comfy_extras/nodes_qwen.py" "$QWEN_NODES_PATCH_URL"

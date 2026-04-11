@@ -34,3 +34,11 @@ EOF
 export PRIVATE_LORA_REPO="${PRIVATE_LORA_REPO:-dumpling404/mylora}"
 export PRIVATE_LORA_REF="${PRIVATE_LORA_REF:-main}"
 export PRIVATE_LORA_SUBDIR="${PRIVATE_LORA_SUBDIR:-loras}"
+
+# LoRA 文件列表。新增或删除 LoRA 只改这里，不动 runpod_bootstrap.sh。
+export PRIVATE_LORA_FILES="${PRIVATE_LORA_FILES:-"
+xieyan_v1.safetensors
+oda-non_IL.safetensors
+realism_lora_by_stable_yogi_v3_lite.safetensors
+urban_womens_style.safetensors
+"}"

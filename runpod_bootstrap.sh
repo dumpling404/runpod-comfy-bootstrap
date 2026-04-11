@@ -111,15 +111,15 @@ load_custom_node_specs() {
 append_private_lora_specs() {
   [[ -n "$PRIVATE_LORA_REPO" ]] || return
   [[ -n "$RUNPOD_SECRET_HG_TOKEN" ]] || die "PRIVATE_LORA_REPO 已配置，但缺少 RUNPOD_SECRET_HG_TOKEN"
+  [[ -n "$PRIVATE_LORA_FILES" ]] || return
 
-  printf '%s|%s|%s/%s|%s\n' \
-    'loras/xieyan_v1.safetensors' "$PRIVATE_LORA_REPO" "$PRIVATE_LORA_SUBDIR" 'xieyan_v1.safetensors' "$PRIVATE_LORA_REF"
-  printf '%s|%s|%s/%s|%s\n' \
-    'loras/oda-non_IL.safetensors' "$PRIVATE_LORA_REPO" "$PRIVATE_LORA_SUBDIR" 'oda-non_IL.safetensors' "$PRIVATE_LORA_REF"
-  printf '%s|%s|%s/%s|%s\n' \
-    'loras/realism_lora_by_stable_yogi_v3_lite.safetensors' "$PRIVATE_LORA_REPO" "$PRIVATE_LORA_SUBDIR" 'realism_lora_by_stable_yogi_v3_lite.safetensors' "$PRIVATE_LORA_REF"
-  printf '%s|%s|%s/%s|%s\n' \
-    'loras/urban_womens_style.safetensors' "$PRIVATE_LORA_REPO" "$PRIVATE_LORA_SUBDIR" 'urban_womens_style.safetensors' "$PRIVATE_LORA_REF"
+  # LoRA 文件列表由 runpod_profile.sh 的 PRIVATE_LORA_FILES 变量控制，不在此硬编码。
+  while IFS= read -r lora_file; do
+    lora_file="${lora_file// /}"
+    [[ -n "$lora_file" ]] || continue
+    printf '%s|%s|%s/%s|%s\n' \
+      "loras/$lora_file" "$PRIVATE_LORA_REPO" "$PRIVATE_LORA_SUBDIR" "$lora_file" "$PRIVATE_LORA_REF"
+  done <<< "$PRIVATE_LORA_FILES"
 }
 
 sync_custom_nodes_if_needed() {
